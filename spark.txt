@@ -1,0 +1,22 @@
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.SparkSession
+
+val spark = SparkSession.builder.appName("Taxi Analysis").getOrCreate()
+
+val taxiDF = spark.read.format("default.taxi").load()
+
+val result = taxiDF.filter(col("total_amount") >= 0)
+  .withColumn("date", to_date(col("tpep_pickup_datetime")))
+  .groupBy("date")
+  .agg(
+    (count(when(col("passenger_count") === 0, true)) / count("*") * 100).alias("percentage_zero"),
+    (count(when(col("passenger_count") === 1, true)) / count("*") * 100).alias("percentage_1p"),
+    (count(when(col("passenger_count") === 2, true)) / count("*") * 100).alias("percentage_2p"),
+    (count(when(col("passenger_count") === 3, true)) / count("*") * 100).alias("percentage_3p"),
+    (count(when(col("passenger_count") >= 4, true)) / count("*") * 100).alias("percentage_4p_plus"),
+    max("total_amount").alias("max_fare"),
+    min("total_amount").alias("min_fare")
+  )
+  .orderBy("date")
+
+result.show()
